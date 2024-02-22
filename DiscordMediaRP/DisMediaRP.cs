@@ -18,24 +18,33 @@ public class DisMediaRP : IDisposable
     private readonly ILogger? _logger;
     private readonly MediaManager _mediaManager = new();
     private readonly DiscordRpcClient _discordRpcClient;
-    private readonly RichPresence _currentStatus = new()
-    {
-        Assets = new()
-        {
-            LargeImageText = "C9Glax/DiscordMediaRichPresence",
-            SmallImageText = "https://www.flaticon.com/de/autoren/alfanz"
-        }
-    };
+    private RichPresence _currentStatus;
     private bool _running = true;
 
-    public DisMediaRP(string applicationId, LogLevel? logLevel, string? largeImageKey = null) : this(applicationId, new Logger(logLevel ?? LogLevel.Information), largeImageKey)
+    private static RichPresence DefaultPresence(string largeImageKey)
+    {
+        return new RichPresence()
+        {
+            Details = "hewwo :3",
+            State = "https://github.com/C9Glax/DiscordMediaRichPresence",
+            Assets = new()
+            {
+                LargeImageKey = largeImageKey,
+                SmallImageKey = "music",
+                LargeImageText = "C9Glax/DiscordMediaRichPresence",
+                SmallImageText = "https://www.flaticon.com/de/autoren/alfanz"
+            }
+        };
+    }
+
+    public DisMediaRP(string applicationId, LogLevel? logLevel, string largeImageKey = "cat") : this(applicationId, new Logger(logLevel ?? LogLevel.Information), largeImageKey)
     {
     }
 
-    public DisMediaRP(string applicationId, ILogger? logger = null, string? largeImageKey = null)
+    public DisMediaRP(string applicationId, ILogger? logger = null, string largeImageKey = "cat")
     {
         this._logger = logger;
-        this._currentStatus.Assets.LargeImageKey = largeImageKey ?? "cat";
+        this._currentStatus = DefaultPresence(largeImageKey);
         this._discordRpcClient = new DiscordRpcClient(applicationId, logger: new DisLogger(this._logger));
         this._discordRpcClient.Initialize();
         this._discordRpcClient.OnError += (sender, args) =>
@@ -48,6 +57,15 @@ public class DisMediaRP : IDisposable
         this._mediaManager.OnAnyMediaPropertyChanged += MediaPropertyChanged;
         this._mediaManager.OnAnyPlaybackStateChanged += PlaybackStateChanged;
         this._mediaManager.OnAnyTimelinePropertyChanged += TimelinePropertyChanged;
+        this._mediaManager.OnFocusedSessionChanged += mediaSession =>
+        {
+            if (mediaSession is null)
+            {
+                this._currentStatus = DefaultPresence(largeImageKey);
+            }
+
+            this._discordRpcClient.SetPresence(this._currentStatus);
+        };
 
 
         if (this._mediaManager.GetFocusedSession() is not null)
@@ -63,7 +81,8 @@ public class DisMediaRP : IDisposable
             }
             this.PlaybackStateChanged(this._mediaManager.GetFocusedSession(), this._mediaManager.GetFocusedSession().ControlSession.GetPlaybackInfo());
             this.TimelinePropertyChanged(this._mediaManager.GetFocusedSession(), this._mediaManager.GetFocusedSession().ControlSession.GetTimelineProperties());
-        }
+        }else
+            this._discordRpcClient.SetPresence(this._currentStatus);
         
         while(_running)
             Thread.Sleep(50);
@@ -81,7 +100,7 @@ public class DisMediaRP : IDisposable
             details += $" - Album: {mediaProperties.AlbumTitle}";
         this._currentStatus.Details = details;
         
-        this._discordRpcClient.SetPresence(this._currentStatus);
+        this.PlaybackStateChanged(mediaSession, mediaSession.ControlSession.GetPlaybackInfo());
     }
 
     private void PlaybackStateChanged(MediaManager.MediaSession mediaSession, GlobalSystemMediaTransportControlsSessionPlaybackInfo playbackInfo)
