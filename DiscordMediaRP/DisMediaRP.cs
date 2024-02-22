@@ -52,7 +52,15 @@ public class DisMediaRP : IDisposable
 
         if (this._mediaManager.GetFocusedSession() is not null)
         {
-            this.MediaPropertyChanged(this._mediaManager.GetFocusedSession(), this._mediaManager.GetFocusedSession().ControlSession.TryGetMediaPropertiesAsync().GetResults());
+            try
+            {
+                this.MediaPropertyChanged(this._mediaManager.GetFocusedSession(),
+                    this._mediaManager.GetFocusedSession().ControlSession.TryGetMediaPropertiesAsync().GetResults());
+            }
+            catch (System.Runtime.InteropServices.COMException e)
+            {
+                this._logger?.LogError("Could not fetch MediaProperties\n{e}", e);
+            }
             this.PlaybackStateChanged(this._mediaManager.GetFocusedSession(), this._mediaManager.GetFocusedSession().ControlSession.GetPlaybackInfo());
             this.TimelinePropertyChanged(this._mediaManager.GetFocusedSession(), this._mediaManager.GetFocusedSession().ControlSession.GetTimelineProperties());
         }
