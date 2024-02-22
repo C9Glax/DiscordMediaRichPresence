@@ -73,9 +73,6 @@ public class DisMediaRP : IDisposable
     {
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(mediaProperties));
-        if (mediaSession != this._mediaManager.GetFocusedSession())
-            return;
-        
         
         string details = $"{mediaProperties.Title}";
         if (mediaProperties.Artist.Length > 0)
@@ -91,9 +88,6 @@ public class DisMediaRP : IDisposable
     {
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(playbackInfo));
-        if (mediaSession != this._mediaManager.GetFocusedSession())
-            return;
-        
         
         string playbackState = playbackInfo.PlaybackStatus switch
         {
@@ -122,8 +116,6 @@ public class DisMediaRP : IDisposable
     {
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(timelineProperties));
-        if (mediaSession != this._mediaManager.GetFocusedSession())
-            return;
 
         if (timelineProperties.LastUpdatedTime < DateTimeOffset.UnixEpoch)
             return;
