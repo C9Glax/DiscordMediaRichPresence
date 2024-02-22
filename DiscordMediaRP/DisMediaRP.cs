@@ -138,9 +138,20 @@ public class DisMediaRP : IDisposable
 
         if (timelineProperties.LastUpdatedTime < DateTimeOffset.UnixEpoch)
             return;
+
+        GlobalSystemMediaTransportControlsSessionPlaybackInfo playbackInfo =
+            mediaSession.ControlSession.GetPlaybackInfo();
         
-        this._currentStatus.Timestamps = new Timestamps(DateTime.Now.Subtract(timelineProperties.Position),
-            DateTime.Now.Add(timelineProperties.EndTime - timelineProperties.Position));
+        string? repeatMode = playbackInfo.AutoRepeatMode switch
+        {
+            MediaPlaybackAutoRepeatMode.Track => "\ud83d\udd02", 
+            MediaPlaybackAutoRepeatMode.List => "\ud83d\udd01",
+            _ => null
+        };
+
+        string? shuffle = (playbackInfo.IsShuffleActive ?? false)  ? "\ud83d\udd00" : null;
+        
+        this._currentStatus.State = string.Join(' ', repeatMode, shuffle, $"{timelineProperties.Position.ToString(@"hh\:mm\:ss")}/{timelineProperties.EndTime.ToString(@"hh\:mm\:ss")}");
         
         this._discordRpcClient.SetPresence(this._currentStatus);
     }
