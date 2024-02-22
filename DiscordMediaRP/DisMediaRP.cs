@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using Windows.Media;
 using Windows.Media.Control;
 using DiscordRPC;
@@ -20,8 +21,9 @@ public class DisMediaRP : IDisposable
     private readonly DiscordRpcClient _discordRpcClient;
     private RichPresence _currentStatus;
     private bool _running = true;
+    private Config config;
 
-    private static RichPresence DefaultPresence(string largeImageKey)
+    private static RichPresence DefaultPresence(string? largeImageKey)
     {
         return new RichPresence()
         {
@@ -29,7 +31,7 @@ public class DisMediaRP : IDisposable
             State = "https://github.com/C9Glax/DiscordMediaRichPresence",
             Assets = new()
             {
-                LargeImageKey = largeImageKey,
+                LargeImageKey = largeImageKey ?? "",
                 SmallImageKey = "music",
                 LargeImageText = "C9Glax/DiscordMediaRichPresence",
                 SmallImageText = "https://www.flaticon.com/de/autoren/alfanz"
@@ -37,15 +39,12 @@ public class DisMediaRP : IDisposable
         };
     }
 
-    public DisMediaRP(string applicationId, LogLevel? logLevel, string largeImageKey = "cat") : this(applicationId, new Logger(logLevel ?? LogLevel.Information), largeImageKey)
+    public DisMediaRP(Config config)
     {
-    }
-
-    public DisMediaRP(string applicationId, ILogger? logger = null, string largeImageKey = "cat")
-    {
-        this._logger = logger;
-        this._currentStatus = DefaultPresence(largeImageKey);
-        this._discordRpcClient = new DiscordRpcClient(applicationId, logger: new DisLogger(this._logger));
+        this.config = config;
+        this._logger = new Logger(config.LogLevel ?? LogLevel.Information);
+        this._currentStatus = DefaultPresence(config.LargeImageKey);
+        this._discordRpcClient = new DiscordRpcClient(config.DiscordKey, logger: new DisLogger(this._logger));
         this._discordRpcClient.Initialize();
         this._discordRpcClient.OnError += (sender, args) =>
         {
@@ -61,7 +60,7 @@ public class DisMediaRP : IDisposable
         {
             if (mediaSession is null)
             {
-                this._currentStatus = DefaultPresence(largeImageKey);
+                this._currentStatus = DefaultPresence(config.LargeImageKey);
             }
 
             this._discordRpcClient.SetPresence(this._currentStatus);
@@ -93,6 +92,9 @@ public class DisMediaRP : IDisposable
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(mediaProperties));
         
+        if (!UseMediaSession(mediaSession))
+            return;
+        
         string details = $"{mediaProperties.Title}";
         if (mediaProperties.Artist.Length > 0)
             details += $" - {mediaProperties.Artist}";
@@ -107,6 +109,9 @@ public class DisMediaRP : IDisposable
     {
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(playbackInfo));
+        
+        if (!UseMediaSession(mediaSession))
+            return;
         
         string playbackState = playbackInfo.PlaybackStatus switch
         {
@@ -136,6 +141,9 @@ public class DisMediaRP : IDisposable
         this._logger?.LogDebug(ObjectToString(mediaSession));
         this._logger?.LogDebug(ObjectToString(timelineProperties));
 
+        if (!UseMediaSession(mediaSession))
+            return;
+
         if (timelineProperties.LastUpdatedTime < DateTimeOffset.UnixEpoch)
             return;
 
@@ -163,6 +171,27 @@ public class DisMediaRP : IDisposable
             this._currentStatus.Timestamps = new Timestamps();
         
         this._discordRpcClient.SetPresence(this._currentStatus);
+    }
+
+    private bool UseMediaSession(MediaManager.MediaSession mediaSession)
+    {
+        string processId = mediaSession.ControlSession.SourceAppUserModelId;
+        if (processId == "spotify.exe")
+            return config.UseSpotify ?? true;
+
+        if (processId == "firefox.exe")
+        {
+            string[] windowNames = Process.GetProcesses().Where(proc => processId.Contains(proc.ProcessName, StringComparison.InvariantCultureIgnoreCase)).Select(proc => proc.MainWindowTitle).ToArray();
+            return !windowNames.Any(name =>
+            {
+                foreach (string site in config.WebbrowserIgnoreSites ?? Array.Empty<string>())
+                    if (name.Contains(site, StringComparison.InvariantCultureIgnoreCase))
+                        return true;
+                return false;
+            });
+        }
+
+        return true;
     }
 
     public void Dispose()
