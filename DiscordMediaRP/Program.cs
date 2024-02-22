@@ -22,7 +22,7 @@ else
     throw new ArgumentNullException(nameof(discordKey));
 
 int imageKeyIndex = Array.IndexOf(args, "-i");
-string? imageKey = null;
+string imageKey = "cat";
 if(imageKeyIndex > -1)
     if (imageKeyIndex + 1 < args.Length)
         imageKey = args[imageKeyIndex + 1];
