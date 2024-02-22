@@ -13,7 +13,7 @@ if(loglevelIndex > -1)
 
 int discordKeyIndex = Array.IndexOf(args, "-d");
 string discordKey;
-if (loglevelIndex > -1)
+if (discordKeyIndex > -1)
     if(discordKeyIndex + 1 < args.Length)
         discordKey = args[discordKeyIndex + 1];
     else
