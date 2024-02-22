@@ -151,7 +151,7 @@ public class DisMediaRP : IDisposable
 
         string? shuffle = (playbackInfo.IsShuffleActive ?? false)  ? "\ud83d\udd00" : null;
         
-        this._currentStatus.State = string.Join(' ', repeatMode, shuffle, $"{timelineProperties.Position.ToString(@"hh\:mm\:ss")}/{timelineProperties.EndTime.ToString(@"hh\:mm\:ss")}");
+        this._currentStatus.State = string.Join(' ', repeatMode, shuffle, $"{timelineProperties.Position:hh\\:mm\\:ss}/{timelineProperties.EndTime:hh\\:mm\\:ss}");
         
         this._discordRpcClient.SetPresence(this._currentStatus);
     }
