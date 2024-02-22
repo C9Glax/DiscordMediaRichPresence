@@ -18,16 +18,24 @@ public class DisMediaRP : IDisposable
     private readonly ILogger? _logger;
     private readonly MediaManager _mediaManager = new();
     private readonly DiscordRpcClient _discordRpcClient;
-    private readonly RichPresence _currentStatus = new();
+    private readonly RichPresence _currentStatus = new()
+    {
+        Assets = new()
+        {
+            LargeImageText = "C9Glax/DiscordMediaRichPresence",
+            SmallImageText = "https://www.flaticon.com/de/autoren/alfanz"
+        }
+    };
     private bool _running = true;
 
-    public DisMediaRP(string applicationId, LogLevel? logLevel) : this(applicationId, new Logger(logLevel ?? LogLevel.Information))
+    public DisMediaRP(string applicationId, LogLevel? logLevel, string? largeImageKey = null) : this(applicationId, new Logger(logLevel ?? LogLevel.Information), largeImageKey)
     {
     }
 
-    public DisMediaRP(string applicationId, ILogger? logger)
+    public DisMediaRP(string applicationId, ILogger? logger = null, string? largeImageKey = null)
     {
         this._logger = logger;
+        this._currentStatus.Assets.LargeImageKey = largeImageKey ?? "cat";
         this._discordRpcClient = new DiscordRpcClient(applicationId, logger: new DisLogger(this._logger));
         this._discordRpcClient.Initialize();
         this._discordRpcClient.OnError += (sender, args) =>
@@ -79,12 +87,12 @@ public class DisMediaRP : IDisposable
             return;
         
         
-        string? playbackState = playbackInfo.PlaybackStatus switch
+        string playbackState = playbackInfo.PlaybackStatus switch
         {
-            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused => "\u23f8",
-            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing => "\u25b6",
-            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Stopped => "\u23f9",
-            _ => null
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Paused => "pause",
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing => "play",
+            GlobalSystemMediaTransportControlsSessionPlaybackStatus.Stopped => "stop",
+            _ => "music"
         };
 
         string? repeatMode = playbackInfo.AutoRepeatMode switch
@@ -96,7 +104,8 @@ public class DisMediaRP : IDisposable
 
         string? shuffle = (playbackInfo.IsShuffleActive ?? false)  ? "\ud83d\udd00" : null;
 
-        this._currentStatus.State = string.Join(' ', playbackState, repeatMode, shuffle, mediaSession.Id);
+        this._currentStatus.State = string.Join(' ', repeatMode, shuffle);
+        this._currentStatus.Assets.SmallImageKey = playbackState;
         
         this._discordRpcClient.SetPresence(this._currentStatus);
     }
